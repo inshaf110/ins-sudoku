@@ -6,13 +6,16 @@
     <title>Sudoku</title>
     <style>
         :root {
-            --bg-color: #f0f2f5;
+            --bg-color: #f2f2f7;
             --board-bg: #ffffff;
-            --primary: #007AFF; /* iOS Blue */
-            --selection: #d4e8ff;
+            --primary: #007AFF;
+            --selection: #b3d7ff;
             --fixed-text: #000000;
             --user-text: #007AFF;
-            --border-color: #8e8e93;
+            --error-bg: #ffcccc;
+            --error-text: #cc0000;
+            --highlight: #eef4fb;
+            --hint-color: #FF9500;
         }
 
         body {
@@ -24,89 +27,115 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-            user-select: none; /* Prevent text selection */
+            user-select: none;
             -webkit-user-select: none;
         }
 
-        h1 { margin-bottom: 10px; font-weight: 600; color: #333; }
+        h1 { margin-bottom: 15px; font-weight: 700; color: #1c1c1e; }
 
         /* Game Board */
         #game-board {
             display: grid;
             grid-template-columns: repeat(9, 1fr);
-            width: 90vw;
+            width: 92vw;
             max-width: 400px;
             aspect-ratio: 1;
-            background: var(--board-bg);
+            background: #8e8e93; /* Border color */
             border: 2px solid #000;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             border-radius: 8px;
+            gap: 1px;
             overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .cell {
+            background-color: var(--board-bg);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
-            border-right: 1px solid #ddd;
-            border-bottom: 1px solid #ddd;
+            font-size: 1.4rem;
             cursor: pointer;
-            transition: background 0.1s;
+            position: relative;
         }
 
         /* Thicker borders for 3x3 boxes */
-        .cell:nth-child(3n) { border-right: 2px solid #333; }
-        .cell:nth-child(9n) { border-right: none; } /* End of row */
+        .cell:nth-child(3n) { border-right: 2px solid #000; }
+        .cell:nth-child(9n) { border-right: none; }
         .cell:nth-child(n+19):nth-child(-n+27),
-        .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid #333; }
-        .cell:nth-child(n+73) { border-bottom: none; }
+        .cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid #000; }
 
-        .cell.fixed { font-weight: bold; color: var(--fixed-text); background-color: #fafafa; }
-        .cell.user-input { color: var(--user-text); font-weight: 500; }
+        .cell.fixed { font-weight: 700; color: var(--fixed-text); background-color: #f0f0f5; }
+        .cell.user-input { color: var(--user-text); font-weight: 600; }
         .cell.selected { background-color: var(--selection) !important; }
-        .cell.error { background-color: #ffcccc !important; color: #d00; }
-        .cell.highlight { background-color: #eef4fb; } /* Same number highlight */
+        .cell.error { background-color: var(--error-bg) !important; color: var(--error-text); }
+        .cell.highlight { background-color: var(--highlight); }
 
         /* Controls */
         #controls {
-            margin-top: 20px;
+            margin-top: 25px;
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            width: 90vw;
+            gap: 8px;
+            width: 92vw;
             max-width: 400px;
         }
 
         .btn {
             background: #fff;
             border: none;
-            border-radius: 10px;
-            padding: 15px 0;
-            font-size: 1.5rem;
+            border-radius: 8px;
+            padding: 12px 0;
+            font-size: 1.4rem;
             color: var(--primary);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            active: scale(0.95);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             cursor: pointer;
+            transition: transform 0.1s, background-color 0.1s;
         }
-        .btn:active { background-color: #eee; transform: scale(0.95); }
-        .btn-clear { color: #ff3b30; font-weight: bold; }
-        .btn-new { grid-column: span 5; background-color: var(--primary); color: white; font-size: 1rem; padding: 12px; margin-top: 10px; }
+        .btn:active { background-color: #e5e5ea; transform: scale(0.96); }
+        
+        .btn-clear { color: #ff3b30; }
+        .btn-hint { color: var(--hint-color); }
+        
+        .btn-action { 
+            grid-column: span 2; 
+            font-size: 1rem; 
+            font-weight: 600; 
+            background-color: var(--primary); 
+            color: white; 
+        }
+        .btn-action.secondary {
+             grid-column: span 3;
+             background-color: #ffffff;
+             color: var(--primary);
+        }
 
         /* Win Overlay */
         #message {
             position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255,255,255,0.95);
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .msg-box {
+            background: white;
             padding: 30px;
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             text-align: center;
-            display: none;
-            z-index: 10;
+            width: 80%;
+            max-width: 300px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
-        #message h2 { margin: 0 0 10px; color: var(--primary); }
+        .msg-box h2 { margin-top: 0; color: var(--primary); }
+        .msg-btn {
+            background: var(--primary); color: white;
+            border: none; padding: 12px 24px;
+            border-radius: 8px; font-size: 1rem;
+            margin-top: 15px; width: 100%;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -125,13 +154,17 @@
         <button class="btn" onclick="inputNum(8)">8</button>
         <button class="btn" onclick="inputNum(9)">9</button>
         <button class="btn btn-clear" onclick="inputNum(0)">⌫</button>
-        <button class="btn btn-new" onclick="newGame()">New Game</button>
+        
+        <button class="btn btn-hint" onclick="getHint()">💡 Hint</button>
+        <button class="btn btn-action secondary" onclick="newGame()">New Game</button>
     </div>
 
     <div id="message">
-        <h2>You Win! 🎉</h2>
-        <p>Great job!</p>
-        <button class="btn btn-new" style="width:100%" onclick="closeMsg(); newGame()">Play Again</button>
+        <div class="msg-box">
+            <h2>You Win! 🎉</h2>
+            <p>Congratulations!</p>
+            <button class="msg-btn" onclick="newGame()">Play Again</button>
+        </div>
     </div>
 
     <script>
@@ -146,6 +179,7 @@
         function isValid(grid, r, c, k) {
             for (let i = 0; i < 9; i++) {
                 if (grid[i][c] === k || grid[r][i] === k) return false;
+                // Check 3x3 box
                 const boxR = 3 * Math.floor(r/3) + Math.floor(i/3);
                 const boxC = 3 * Math.floor(c/3) + i % 3;
                 if (grid[boxR][boxC] === k) return false;
@@ -153,11 +187,20 @@
             return true;
         }
 
+        // Improved Shuffle for better randomness
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
         function generateSolution(grid) {
             for (let r = 0; r < 9; r++) {
                 for (let c = 0; c < 9; c++) {
                     if (grid[r][c] === 0) {
-                        let nums = [1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
+                        let nums = shuffle([1,2,3,4,5,6,7,8,9]);
                         for (let k of nums) {
                             if (isValid(grid, r, c, k)) {
                                 grid[r][c] = k;
@@ -173,16 +216,16 @@
         }
 
         function newGame() {
-            // 1. Create Empty
+            // 1. Reset Arrays
             board = Array.from({length: 9}, () => Array(9).fill(0));
             fixed = Array.from({length: 9}, () => Array(9).fill(false));
             
             // 2. Generate Full Solution
             generateSolution(board);
-            solution = board.map(row => [...row]); // Copy solution
+            solution = board.map(row => [...row]); // Save correct answer
 
-            // 3. Punch Holes (Difficulty: Leave ~35 numbers)
-            let attempts = 45; 
+            // 3. Remove Numbers (Difficulty)
+            let attempts = 40; 
             while (attempts > 0) {
                 let r = Math.floor(Math.random() * 9);
                 let c = Math.floor(Math.random() * 9);
@@ -199,8 +242,8 @@
                 }
             }
 
+            document.getElementById('message').style.display = 'none';
             renderBoard();
-            closeMsg();
         }
 
         // --- UI Functions ---
@@ -214,30 +257,31 @@
                     else if (board[r][c] !== 0) cell.classList.add('user-input');
                     
                     cell.innerText = board[r][c] === 0 ? '' : board[r][c];
-                    
-                    // Click Event
                     cell.onclick = () => selectCell(r, c, cell);
+                    
+                    // Restore error state if reloading
+                    if (board[r][c] !== 0 && !fixed[r][c]) {
+                         if (!isValidMove(r, c, board[r][c])) cell.classList.add('error');
+                    }
+                    
                     boardEl.appendChild(cell);
                 }
             }
         }
 
         function selectCell(r, c, el) {
-            // Remove previous selection
+            // Clear styles
             document.querySelectorAll('.cell.selected').forEach(c => c.classList.remove('selected'));
             document.querySelectorAll('.cell.highlight').forEach(c => c.classList.remove('highlight'));
 
             selectedCell = {r, c};
             el.classList.add('selected');
 
-            // Highlight all instances of this number
+            // Highlight matching numbers
             const val = board[r][c];
             if (val !== 0) {
-                const cells = document.querySelectorAll('.cell');
-                cells.forEach((cell, idx) => {
-                    const i = Math.floor(idx / 9);
-                    const j = idx % 9;
-                    if (board[i][j] === val) cell.classList.add('highlight');
+                Array.from(boardEl.children).forEach((cell, idx) => {
+                    if (cell.innerText == val) cell.classList.add('highlight');
                 });
             }
         }
@@ -246,20 +290,22 @@
             if (!selectedCell) return;
             const {r, c} = selectedCell;
 
-            if (fixed[r][c]) return; // Cannot edit fixed cells
+            if (fixed[r][c]) return; 
 
             board[r][c] = num;
             
-            // Update UI directly
+            // UI Update
             const index = r * 9 + c;
             const cell = boardEl.children[index];
             cell.innerText = num === 0 ? '' : num;
+            cell.className = 'cell selected'; // Reset classes
             
-            // Visual feedback
-            cell.classList.remove('user-input', 'error');
             if (num !== 0) {
                 cell.classList.add('user-input');
-                // Check for immediate conflict
+                // Highlight matches again
+                selectCell(r, c, cell);
+                
+                // Check conflicts
                 if (!isValidMove(r, c, num)) {
                     cell.classList.add('error');
                 }
@@ -268,8 +314,24 @@
             checkWin();
         }
 
+        function getHint() {
+            if (!selectedCell) {
+                alert("Select a cell first!");
+                return;
+            }
+            const {r, c} = selectedCell;
+            
+            if (fixed[r][c]) return; // Can't hint fixed cells
+            
+            // Get correct answer from solution array
+            const correctVal = solution[r][c];
+            
+            // Fill it in
+            inputNum(correctVal);
+        }
+
         function isValidMove(r, c, k) {
-            // A relaxed valid check that ignores the cell itself
+            // Check if 'k' exists in row, col, or box (excluding current cell)
             for (let i = 0; i < 9; i++) {
                 if (i !== c && board[r][i] === k) return false;
                 if (i !== r && board[i][c] === k) return false;
@@ -285,7 +347,6 @@
         }
 
         function checkWin() {
-            // Simple check: Board full + No Errors + Matches Solution
             let isFull = true;
             let isCorrect = true;
             for(let r=0; r<9; r++){
@@ -294,19 +355,13 @@
                     if(board[r][c] !== solution[r][c]) isCorrect = false;
                 }
             }
-            
             if (isFull && isCorrect) {
-                document.getElementById('message').style.display = 'block';
+                document.getElementById('message').style.display = 'flex';
             }
         }
 
-        function closeMsg() {
-            document.getElementById('message').style.display = 'none';
-        }
-
-        // Initialize
+        // Start
         newGame();
-
     </script>
 </body>
 </html>
